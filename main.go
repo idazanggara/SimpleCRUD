@@ -21,7 +21,11 @@ var books []Book
 var fileName string = "data.csv"
 
 func main() {
-	loadDataFromCSV(fileName)
+
+	err := loadDataFromCSV(fileName)
+	if err != nil {
+		panic(err)
+	}
 
 	for {
 		fmt.Println("==== Book Data Management ====")
@@ -37,13 +41,25 @@ func main() {
 
 		switch choice {
 		case 1:
-			viewAllBooks()
+			err := viewAllBooks()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case 2:
-			addNewBook()
+			err := addNewBook()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case 3:
-			updateBook()
+			err := updateBook()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case 4:
-			deleteBook()
+			err := deleteBook()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case 5:
 			os.Exit(0)
 		default:
@@ -63,57 +79,40 @@ func main() {
 // 	defer f.Close()
 // }
 
-func loadDataFromCSV(fileName string) {
+func loadDataFromCSV(fileName string) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		fmt.Println("Error opening CSV file:", err)
-		return
+		return fmt.Errorf("error opening csv file: %w", err)
 	}
 	defer file.Close()
 
-	books = nil // reset book slice
+	scanner := bufio.NewScanner(file)
 
-	f, err := os.Open(fileName)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		record := strings.Split(scanner.Text(), ",")
 		id, _ := strconv.Atoi(record[0])
 		pages, _ := strconv.Atoi(record[4])
 
-		// Check if book with ID already exists
-		bookIndex := findBookIndexByID(id)
-		if bookIndex != -1 {
-			fmt.Println("Buku dengan Id:", id, "tidak ada!")
-		} else {
-			// Book doesn't exist, create new book
-			book := Book{
-				Id:          id,
-				Title:       record[1],
-				Author:      record[2],
-				ReleaseYear: record[3],
-				Pages:       pages,
-			}
-			books = append(books, book)
+		book := Book{
+			Id:          id,
+			Title:       record[1],
+			Author:      record[2],
+			ReleaseYear: record[3],
+			Pages:       pages,
 		}
+		books = append(books, book)
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading CSV record:", err)
-		return
+		return fmt.Errorf("error opening csv file: %w", err)
 	}
+	return nil
 }
 
-func saveDataToCSV(fileName string) {
-
+func saveDataToCSV(fileName string) error {
 	file, err := os.Create(fileName)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return fmt.Errorf("error opening csv file: %w", err)
 	}
 	defer file.Close()
 
@@ -121,13 +120,13 @@ func saveDataToCSV(fileName string) {
 		row := strconv.Itoa(book.Id) + "," + book.Title + "," + book.Author + "," + book.ReleaseYear + "," + strconv.Itoa(book.Pages) + "\n"
 		file.WriteString(row)
 	}
-	fmt.Println("Data berhasil disimpan ke file data.csv")
+	fmt.Println("Data successfully saved to data.csv")
+	return nil
 }
 
-func viewAllBooks() {
+func viewAllBooks() error {
 	if len(books) == 0 {
-		fmt.Println("No books available.")
-		return
+		return fmt.Errorf("no books available")
 	}
 
 	for _, book := range books {
@@ -138,9 +137,11 @@ func viewAllBooks() {
 		fmt.Printf("Book Pages: %d\n", book.Pages)
 		fmt.Println()
 	}
+
+	return nil
 }
 
-func addNewBook() {
+func addNewBook() error {
 	var newBook Book
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -167,13 +168,36 @@ func addNewBook() {
 	pages, _ := strconv.Atoi(scanner.Text())
 	newBook.Pages = pages
 
-	books = append(books, newBook)
-	saveDataToCSV(fileName)
+	fmt.Print("Are you sure want to add this book (y/n)?")
+	scanner.Scan()
+	choice := scanner.Text()
+	if strings.ToLower(choice) == "y" {
+		// dari pada kalian buat seperti ini, lebih baik kalian buat idnya auto increment
+		// dengan cara, tidak usah kalian beri inputan untuk id dan idnya kalian cek dari id data sebelumnya di tambahkan 1
+		_, err := findBookIndexByID(newBook.Id)
+		if err != nil {
+			books = append(books, newBook)
+		} else {
+			return fmt.Errorf("Book with id: %d already exist", newBook.Id)
+		}
 
-	fmt.Println("Book added successfully.")
+		fmt.Println("Book added successfully.")
+		err = saveDataToCSV(fileName)
+		if err != nil {
+			return err
+		}
+
+	} else if strings.ToLower(choice) == "n" {
+		fmt.Println("Data is not saved")
+	} else {
+		fmt.Println("Invalid choice. Please try again.")
+		addNewBook()
+	}
+
+	return nil
 }
 
-func updateBook() {
+func updateBook() error {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("Enter Book Id to update: ")
@@ -181,10 +205,9 @@ func updateBook() {
 	scanner.Scan()
 	bookId, _ = strconv.Atoi(scanner.Text())
 
-	bookIndex := findBookIndexByID(bookId)
-	if bookIndex == -1 {
-		fmt.Println("Book not found.")
-		return
+	bookIndex, err := findBookIndexByID(bookId)
+	if err != nil {
+		return err
 	}
 
 	var updatedBook Book
@@ -207,16 +230,39 @@ func updateBook() {
 	pages, _ := strconv.Atoi(scanner.Text())
 	updatedBook.Pages = pages
 
-	books[bookIndex].Title = updatedBook.Title
-	books[bookIndex].Author = updatedBook.Author
-	books[bookIndex].ReleaseYear = updatedBook.ReleaseYear
-	books[bookIndex].Pages = updatedBook.Pages
-	saveDataToCSV(fileName)
+	fmt.Print("Are you sure want to update this book (y/n)?")
+	scanner.Scan()
+	choice := scanner.Text()
+	if strings.ToLower(choice) == "y" {
+		if updatedBook.Title != "" {
+			books[bookIndex].Title = updatedBook.Title
+		}
+		if updatedBook.Author != "" {
+			books[bookIndex].Author = updatedBook.Author
+		}
+		if updatedBook.ReleaseYear != "" {
+			books[bookIndex].ReleaseYear = updatedBook.ReleaseYear
+		}
+		if updatedBook.Pages != 0 {
+			books[bookIndex].Pages = updatedBook.Pages
+		}
 
-	fmt.Println("Book updated successfully.")
+		fmt.Println("Book updated successfully.")
+		err = saveDataToCSV(fileName)
+		if err != nil {
+			return err
+		}
+	} else if strings.ToLower(choice) == "n" {
+		fmt.Println("Data is not updated")
+	} else {
+		fmt.Println("Invalid choice. Please try again.")
+		updateBook()
+	}
+
+	return nil
 }
 
-func deleteBook() {
+func deleteBook() error {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("Enter Book ID to delete: ")
@@ -224,23 +270,36 @@ func deleteBook() {
 	scanner.Scan()
 	bookId, _ = strconv.Atoi(scanner.Text())
 
-	bookkIndex := findBookIndexByID(bookId)
-	if bookkIndex == -1 {
-		fmt.Println("Book not found.")
-		return
+	fmt.Print("Are you sure want to delete this book (y/n)?")
+	scanner.Scan()
+	choice := scanner.Text()
+	if strings.ToLower(choice) == "y" {
+		bookIndex, err := findBookIndexByID(bookId)
+		if err != nil {
+			return err
+		} else {
+			books = append(books[:bookIndex], books[bookIndex+1:]...)
+		}
+		fmt.Println("Book deleted successfully.")
+		err = saveDataToCSV(fileName)
+		if err != nil {
+			return err
+		}
+	} else if strings.ToLower(choice) == "n" {
+		fmt.Println("Data is not deleted")
 	} else {
-		books = append(books[:bookkIndex], books[bookkIndex+1:]...)
+		fmt.Println("Invalid choice. Please try again.")
+		deleteBook()
 	}
-	saveDataToCSV(fileName)
 
-	fmt.Println("Book deleted successfully.")
+	return nil
 }
 
-func findBookIndexByID(id int) int {
+func findBookIndexByID(id int) (int, error) {
 	for i, book := range books {
 		if book.Id == id {
-			return i
+			return i, nil
 		}
 	}
-	return -1
+	return 0, fmt.Errorf("id: %d not found", id)
 }
