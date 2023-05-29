@@ -35,11 +35,11 @@ Buatlah fitur yang dapat menambahkan `Book` ke `data.csv`.
 
 ## Release 3
 
-Buatlah fitur yang dapat mengupdate `Book` dari `data.csv` berdasarkan id
+Buatlah fitur yang dapat mengupdate `Book` dari `data.csv` berdasarkan `id`
 
 
 
 ## Release 4
 
-Buatlah fitur yang dapat menghapus `Book` dari `data.csv` berdasarkan id
+Buatlah fitur yang dapat menghapus `Book` dari `data.csv` berdasarkan `id`
 
