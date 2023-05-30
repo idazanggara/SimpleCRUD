@@ -21,7 +21,6 @@ var books []Book
 var fileName string = "data.csv"
 
 func main() {
-	// createFile(fileName)
 
 	err := loadDataFromCSV(fileName)
 	if err != nil {
@@ -116,13 +115,13 @@ func saveDataToCSV(fileName string) error {
 	return nil
 }
 
-func findBookIndexByID(id int) (int, error) {
-	for i, book := range books {
+func findBookByID(id int) (Book, error) {
+	for _, book := range books {
 		if book.Id == id {
-			return i, nil
+			return book, nil
 		}
 	}
-	return 0, fmt.Errorf("id: %d not found", id)
+	return Book{}, fmt.Errorf("id: %d not found", id)
 }
 
 func viewAllBooks() error {
@@ -173,9 +172,7 @@ func addNewBook() error {
 	scanner.Scan()
 	choice := scanner.Text()
 	if strings.ToLower(choice) == "y" {
-		// dari pada kalian buat seperti ini, lebih baik kalian buat idnya auto increment
-		// dengan cara, tidak usah kalian beri inputan untuk id dan idnya kalian cek dari id data sebelumnya di tambahkan 1
-		_, err := findBookIndexByID(newBook.Id)
+		_, err := findBookByID(newBook.Id)
 		if err != nil {
 			books = append(books, newBook)
 		} else {
@@ -206,7 +203,7 @@ func updateBook() error {
 	scanner.Scan()
 	bookId, _ = strconv.Atoi(scanner.Text())
 
-	bookIndex, err := findBookIndexByID(bookId)
+	book, err := findBookByID(bookId)
 	if err != nil {
 		return err
 	}
@@ -235,26 +232,28 @@ func updateBook() error {
 	scanner.Scan()
 	choice := scanner.Text()
 	if strings.ToLower(choice) == "y" {
+		for i := range books {
+			if books[i].Id == book.Id {
+				if strings.TrimSpace(updatedBook.Title) != "" {
+					books[i].Title = updatedBook.Title
+				}
+				if strings.TrimSpace(updatedBook.Author) != "" {
+					books[i].Author = updatedBook.Author
+				}
+				if strings.TrimSpace(updatedBook.ReleaseYear) != "" {
+					books[i].ReleaseYear = updatedBook.ReleaseYear
+				}
+				if updatedBook.Pages != 0 {
+					books[i].Pages = updatedBook.Pages
+				}
+			}
+		}
 
-		if strings.TrimSpace(updatedBook.Title) != "" {
-			books[bookIndex].Title = updatedBook.Title
-		}
-		if strings.TrimSpace(updatedBook.Author) != "" {
-			books[bookIndex].Author = updatedBook.Author
-		}
-		if strings.TrimSpace(updatedBook.ReleaseYear) != "" {
-			books[bookIndex].ReleaseYear = updatedBook.ReleaseYear
-		}
-		if updatedBook.Pages != 0 {
-			books[bookIndex].Pages = updatedBook.Pages
-		}
-
+		fmt.Println("Book updated successfully.")
 		err = saveDataToCSV(fileName)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Book updated successfully.")
-
 	} else if strings.ToLower(choice) == "n" {
 		fmt.Println("Data is not updated")
 	} else {
@@ -277,19 +276,22 @@ func deleteBook() error {
 	scanner.Scan()
 	choice := scanner.Text()
 	if strings.ToLower(choice) == "y" {
-		bookIndex, err := findBookIndexByID(bookId)
+		book, err := findBookByID(bookId)
 		if err != nil {
 			return err
 		} else {
-			books = append(books[:bookIndex], books[bookIndex+1:]...)
+			for i := range books {
+				if books[i].Id == book.Id {
+					books = append(books[:i], books[i+1:]...)
+					break
+				}
+			}
 		}
-
 		err = saveDataToCSV(fileName)
 		if err != nil {
 			return err
 		}
 		fmt.Println("Book deleted successfully.")
-
 	} else if strings.ToLower(choice) == "n" {
 		fmt.Println("Data is not deleted")
 	} else {
