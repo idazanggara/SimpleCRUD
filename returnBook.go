@@ -246,6 +246,7 @@ func updateBook() error {
 				if updatedBook.Pages != 0 {
 					books[i].Pages = updatedBook.Pages
 				}
+				break
 			}
 		}
 
