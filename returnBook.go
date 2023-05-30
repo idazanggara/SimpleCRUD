@@ -249,11 +249,11 @@ func updateBook() error {
 			}
 		}
 
-		fmt.Println("Book updated successfully.")
 		err = saveDataToCSV(fileName)
 		if err != nil {
 			return err
 		}
+		fmt.Println("Book updated successfully.")
 	} else if strings.ToLower(choice) == "n" {
 		fmt.Println("Data is not updated")
 	} else {
